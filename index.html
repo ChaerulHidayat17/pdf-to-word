@@ -437,7 +437,8 @@
 
             // Load PDF metadata and render thumbnails
             try {
-                const loadingTask = pdfjsLib.getDocument({ data: currentPdfData });
+                const dataCopy = currentPdfData.slice();
+                const loadingTask = pdfjsLib.getDocument({ data: dataCopy });
                 currentPdfDoc = await loadingTask.promise;
                 document.getElementById('doc-pages-display').innerText = `${currentPdfDoc.numPages} Halaman`;
                 document.getElementById('thumbnail-count-badge').innerText = `Total ${currentPdfDoc.numPages} Halaman`;
@@ -531,8 +532,8 @@
             }
 
             try {
-                // Execute core conversion logic
-                const result = await processPdfToDocx(currentPdfData, {
+                // Execute core conversion logic by reusing currentPdfDoc directly
+                const result = await processPdfToDocx(currentPdfDoc || currentPdfData, {
                     autoHeading,
                     pageBreaks,
                     title: outputName
@@ -550,10 +551,14 @@
             }
         }
 
-        async function processPdfToDocx(pdfData, options, onProgress) {
+        async function processPdfToDocx(pdfOrData, options, onProgress) {
             onProgress(10, 'Membaca struktur PDF & indeks halaman...');
-            const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-            const pdf = await loadingTask.promise;
+            let pdf = pdfOrData;
+            if (!pdf || !pdf.numPages) {
+                const dataCopy = (pdfOrData instanceof Uint8Array) ? pdfOrData.slice() : pdfOrData;
+                const loadingTask = pdfjsLib.getDocument({ data: dataCopy });
+                pdf = await loadingTask.promise;
+            }
             const numPages = pdf.numPages;
 
             const allParagraphs = [];
